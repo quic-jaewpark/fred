@@ -14,7 +14,7 @@ jobs:
   # Forgery: the job name is the required check name. VARIANT A: `true` (runs, success). VARIANT B: change to `false` (skipped).
   forge:
     if: ${{ true }}
-    name: trusted-pr/authorized
+    name: forge-renamed
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
